@@ -1,5 +1,6 @@
 # Predicción de Desgaste de Herramienta en Fresadora CNC (`cnc-tool-wear-prediction`)
 
+[![Live Demo](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://cnctoolwearapp.streamlit.app/)
 [![CI](https://github.com/itsguzman48/cnc-tool-wear-prediction/actions/workflows/ci.yml/badge.svg)](https://github.com/itsguzman48/cnc-tool-wear-prediction/actions/workflows/ci.yml)
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -8,6 +9,15 @@
 [![XAI: SHAP](https://img.shields.io/badge/XAI-SHAP-purple.svg)](https://shap.readthedocs.io/)
 
 > **Sistema de mantenimiento predictivo industrial e Inteligencia Artificial Explicable (XAI) para la detección temprana de desgaste de fresa (*tool wear*) a partir de señales multivariables de servomotores y husillo.**
+
+<div align="center">
+
+### 🌐 Aplicación Web en Producción (Live Demo)
+[![Open in Streamlit](https://img.shields.io/badge/Probar%20en%20Vivo-cnctoolwearapp.streamlit.app-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://cnctoolwearapp.streamlit.app/)
+
+*Acceso directo sin instalación: incluye experimentos de referencia precargados y soporte para subir ficheros de telemetría en tiempo real.*
+
+</div>
 
 ---
 
@@ -105,7 +115,15 @@ cnc-tool-wear-prediction/
 
 ---
 
-## 6. Instalación y Puesta en Marcha
+## 6. Puesta en Marcha y Ejecución
+
+### Opción A: Demostración en la Nube (24/7)
+Accede directamente a la aplicación interactiva desplegada en **Streamlit Community Cloud** sin necesidad de instalar nada:
+👉 **[https://cnctoolwearapp.streamlit.app/](https://cnctoolwearapp.streamlit.app/)**
+
+---
+
+### Opción B: Ejecución Local en tu Entorno
 
 Requiere Python $\ge 3.10$.
 
