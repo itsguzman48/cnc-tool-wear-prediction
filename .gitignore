@@ -1,0 +1,21 @@
+# Datos y binarios pesados
+data/
+models/*.pkl
+*.pkl
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Python cache y Jupyter
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Variables de entorno y sistema
+.env
+.DS_Store
+Thumbs.db
