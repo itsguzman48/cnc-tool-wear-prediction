@@ -1,0 +1,29 @@
+{
+  "Dummy (Mayoritario)": {
+    "accuracy_mean": 0.5429374313844576,
+    "accuracy_std": 0.03949480135184976,
+    "precision_mean": 0.5429374313844576,
+    "recall_mean": 1.0,
+    "f1_mean": 0.7029105173160014,
+    "f1_std": 0.033628107597115466,
+    "roc_auc_mean": 0.5
+  },
+  "Logistic Regression (Baseline Lineal)": {
+    "accuracy_mean": 0.43728806335105547,
+    "accuracy_std": 0.12866575388811624,
+    "precision_mean": 0.44963619147432043,
+    "recall_mean": 0.5466642693765013,
+    "f1_mean": 0.4821094509361183,
+    "f1_std": 0.20613127554557742,
+    "roc_auc_mean": 0.36457297607695827
+  },
+  "Random Forest (Baseline \u00c1rboles)": {
+    "accuracy_mean": 0.4285897527881356,
+    "accuracy_std": 0.15115802427192726,
+    "precision_mean": 0.4463622358949461,
+    "recall_mean": 0.5672600408196938,
+    "f1_mean": 0.49781851469920657,
+    "f1_std": 0.21294753559071916,
+    "roc_auc_mean": 0.37539311077287685
+  }
+}
