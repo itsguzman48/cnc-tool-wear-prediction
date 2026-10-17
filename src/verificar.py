@@ -5,8 +5,8 @@ en el banco de pruebas de la Universidad de Michigan.
 """
 
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 if str(BASE_DIR) not in sys.path:
@@ -15,6 +15,7 @@ if str(BASE_DIR) not in sys.path:
 import joblib
 import numpy as np
 import pandas as pd
+
 from src.features import extraer_features_segmento
 
 
