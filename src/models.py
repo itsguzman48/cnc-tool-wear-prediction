@@ -5,8 +5,8 @@ StratifiedGroupKFold y genera explicaciones explicables de caja blanca con SHAP.
 """
 
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 # Asegurar raíz en sys.path
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -16,16 +16,21 @@ if str(BASE_DIR) not in sys.path:
 import joblib
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import shap
-from sklearn.metrics import accuracy_score, classification_report, f1_score, roc_auc_score
-from sklearn.model_selection import StratifiedGroupKFold
 import xgboost as xgb
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    roc_auc_score,
+)
+from sklearn.model_selection import StratifiedGroupKFold
 
 from src.features import construir_dataset_segmentado
 
 
-def entrenar_y_evaluar_xgboost(data_dir: Path, models_dir: Path, reports_dir: Path) -> dict:
+def entrenar_y_evaluar_xgboost(
+    data_dir: Path, models_dir: Path, reports_dir: Path
+) -> dict:
     """Entrena XGBoost con GroupKFold, guarda el artefacto de producción y genera explicaciones SHAP."""
     models_dir.mkdir(parents=True, exist_ok=True)
     figures_dir = reports_dir / "figures"
@@ -96,7 +101,10 @@ def entrenar_y_evaluar_xgboost(data_dir: Path, models_dir: Path, reports_dir: Pa
     # Gráfico 1: Beeswarm Summary Plot
     plt.figure(figsize=(10, 6))
     shap.summary_plot(shap_values, X, max_display=12, show=False)
-    plt.title("Importancia Global de Variables e Impacto en Desgaste (SHAP Beeswarm)", fontsize=13)
+    plt.title(
+        "Importancia Global de Variables e Impacto en Desgaste (SHAP Beeswarm)",
+        fontsize=13,
+    )
     plt.tight_layout()
     plt.savefig(figures_dir / "shap_summary_beeswarm.png", dpi=150, bbox_inches="tight")
     plt.close()
@@ -104,7 +112,10 @@ def entrenar_y_evaluar_xgboost(data_dir: Path, models_dir: Path, reports_dir: Pa
     # Gráfico 2: Bar Plot de Importancia Media
     plt.figure(figsize=(10, 5))
     shap.plots.bar(shap_values, max_display=10, show=False)
-    plt.title("Top 10 Señales más Influyentes en la Predicción (SHAP Mean |Values|)", fontsize=13)
+    plt.title(
+        "Top 10 Señales más Influyentes en la Predicción (SHAP Mean |Values|)",
+        fontsize=13,
+    )
     plt.tight_layout()
     plt.savefig(figures_dir / "shap_bar_importance.png", dpi=150, bbox_inches="tight")
     plt.close()

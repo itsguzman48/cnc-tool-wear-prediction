@@ -5,8 +5,8 @@ de validación cruzada por experimento (exp_id).
 """
 
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 # Asegurar raíz en sys.path
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -14,11 +14,16 @@ if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
 import numpy as np
-import pandas as pd
 from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -26,10 +31,12 @@ from sklearn.preprocessing import StandardScaler
 from src.features import construir_dataset_segmentado
 
 
-def evaluar_modelo_group_cv(modelo, X: np.ndarray, y: np.ndarray, groups: np.ndarray, n_splits: int = 5) -> dict:
+def evaluar_modelo_group_cv(
+    modelo, X: np.ndarray, y: np.ndarray, groups: np.ndarray, n_splits: int = 5
+) -> dict:
     """Evalúa un estimador mediante StratifiedGroupKFold para garantizar balance de clases sin data leakage."""
     sgkf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=42)
-    
+
     accs, precs, recs, f1s, aucs = [], [], [], [], []
 
     for train_idx, test_idx in sgkf.split(X, y, groups=groups):
@@ -38,7 +45,7 @@ def evaluar_modelo_group_cv(modelo, X: np.ndarray, y: np.ndarray, groups: np.nda
 
         modelo.fit(X_train, y_train)
         y_pred = modelo.predict(X_test)
-        
+
         # Probabilidades si el modelo lo soporta
         if hasattr(modelo, "predict_proba"):
             y_proba = modelo.predict_proba(X_test)[:, 1]
@@ -78,10 +85,12 @@ def ejecutar_evaluacion_baseline(data_dir: Path, reports_dir: Path) -> dict:
 
     modelos = {
         "Dummy (Mayoritario)": DummyClassifier(strategy="most_frequent"),
-        "Logistic Regression (Baseline Lineal)": Pipeline([
-            ("scaler", StandardScaler()),
-            ("clf", LogisticRegression(max_iter=1000, random_state=42)),
-        ]),
+        "Logistic Regression (Baseline Lineal)": Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("clf", LogisticRegression(max_iter=1000, random_state=42)),
+            ]
+        ),
         "Random Forest (Baseline Árboles)": RandomForestClassifier(
             n_estimators=100, max_depth=6, random_state=42, n_jobs=-1
         ),
@@ -96,7 +105,9 @@ def ejecutar_evaluacion_baseline(data_dir: Path, reports_dir: Path) -> dict:
         res = evaluar_modelo_group_cv(modelo, X, y, groups, n_splits=5)
         resultados[nombre] = res
         print(f"\nModelo: {nombre}")
-        print(f"  - Accuracy: {res['accuracy_mean']:.3f} (+/- {res['accuracy_std']:.3f})")
+        print(
+            f"  - Accuracy: {res['accuracy_mean']:.3f} (+/- {res['accuracy_std']:.3f})"
+        )
         print(f"  - F1-Score: {res['f1_mean']:.3f} (+/- {res['f1_std']:.3f})")
         print(f"  - ROC-AUC:  {res['roc_auc_mean']:.3f}")
 

@@ -5,8 +5,8 @@ inferir el estado de desgaste (worn/unworn) con XGBoost y auditar la decisión m
 """
 
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 # Asegurar raíz en sys.path
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -15,7 +15,6 @@ if str(BASE_DIR) not in sys.path:
 
 import joblib
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 import shap
 import streamlit as st
@@ -65,7 +64,9 @@ def cargar_artefactos():
     cols_path = models_dir / "feature_columns.json"
 
     if not model_path.exists():
-        st.error(f"Modelo no encontrado en {model_path}. Ejecuta primero src/models.py.")
+        st.error(
+            f"Modelo no encontrado en {model_path}. Ejecuta primero src/models.py."
+        )
         return None, None
 
     modelo = joblib.load(model_path)
@@ -105,21 +106,34 @@ def main():
             "Experimento 06 (Herramienta Desgastada - Worn)": (6, 6.0, 4.0, "worn"),
             "Experimento 18 (Herramienta Desgastada - Worn)": (18, 3.0, 2.5, "worn"),
         }
-        eleccion = st.sidebar.selectbox("Seleccionar serie temporal:", list(muestras.keys()))
-        exp_id, feedrate, clamp, expected_label = muestras[eleccion]
+        eleccion = st.sidebar.selectbox(
+            "Seleccionar serie temporal:", list(muestras.keys())
+        )
+        exp_id, feedrate, clamp, _expected_label = muestras[eleccion]
         file_path = data_raw / f"experiment_{exp_id:02d}.csv"
         if file_path.exists():
             df_exp = pd.read_csv(file_path)
     else:
-        uploaded_file = st.sidebar.file_uploader("Subir CSV de telemetría de mecanizado", type=["csv"])
-        feedrate = st.sidebar.number_input("Velocidad de avance (Feedrate mm/s)", min_value=1.0, max_value=50.0, value=6.0)
-        clamp = st.sidebar.number_input("Presión de fijación (bar)", min_value=1.0, max_value=10.0, value=4.0)
+        uploaded_file = st.sidebar.file_uploader(
+            "Subir CSV de telemetría de mecanizado", type=["csv"]
+        )
+        feedrate = st.sidebar.number_input(
+            "Velocidad de avance (Feedrate mm/s)",
+            min_value=1.0,
+            max_value=50.0,
+            value=6.0,
+        )
+        clamp = st.sidebar.number_input(
+            "Presión de fijación (bar)", min_value=1.0, max_value=10.0, value=4.0
+        )
         if uploaded_file is not None:
             df_exp = pd.read_csv(uploaded_file)
             exp_id = 99
 
     if df_exp is None:
-        st.info("Por favor, selecciona o sube un archivo CSV para iniciar el diagnóstico.")
+        st.info(
+            "Por favor, selecciona o sube un archivo CSV para iniciar el diagnóstico."
+        )
         return
 
     # Fases de mecanizado activas
@@ -132,7 +146,9 @@ def main():
         df_corte = df_exp
 
     # Extraer features de la fase de corte
-    feats_dict = extraer_features_segmento(df_corte, exp_id=exp_id, feedrate=feedrate, clamp=clamp, label=0)
+    feats_dict = extraer_features_segmento(
+        df_corte, exp_id=exp_id, feedrate=feedrate, clamp=clamp, label=0
+    )
     X_input = pd.DataFrame([feats_dict])[feature_cols].fillna(0.0)
 
     # Inferencia
@@ -144,20 +160,39 @@ def main():
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         if y_pred == 1:
-            st.metric("Diagnóstico del Modelo", "WORN (Desgaste)", delta="- Reemplazo necesario", delta_color="inverse")
+            st.metric(
+                "Diagnóstico del Modelo",
+                "WORN (Desgaste)",
+                delta="- Reemplazo necesario",
+                delta_color="inverse",
+            )
         else:
-            st.metric("Diagnóstico del Modelo", "UNWORN (Afilada)", delta="Operación Segura", delta_color="normal")
+            st.metric(
+                "Diagnóstico del Modelo",
+                "UNWORN (Afilada)",
+                delta="Operación Segura",
+                delta_color="normal",
+            )
     with col2:
         st.metric("Probabilidad de Desgaste", f"{prob_worn * 100:.1f}%")
     with col3:
-        st.metric("Corriente Media Husillo (S1)", f"{df_corte['S1_OutputCurrent'].mean():.2f} A")
+        st.metric(
+            "Corriente Media Husillo (S1)",
+            f"{df_corte['S1_OutputCurrent'].mean():.2f} A",
+        )
     with col4:
         st.metric("Duración Total Muestreo", f"{len(df_exp) * 0.1:.1f} s")
 
     st.markdown("---")
 
     # Pestañas de análisis
-    tab1, tab2, tab3 = st.tabs(["📈 Señales de Telemetría", "🔍 Explicación SHAP (XAI)", "ℹ️ Rigor y Metodología"])
+    tab1, tab2, tab3 = st.tabs(
+        [
+            "📈 Señales de Telemetría",
+            "🔍 Explicación SHAP (XAI)",
+            "ℹ️ Rigor y Metodología",
+        ]
+    )
 
     with tab1:
         st.subheader("Telemetría de los Servomotores y Husillo")
@@ -165,14 +200,27 @@ def main():
         t = df_exp.index * 0.1
 
         # Corriente de salida del husillo S1
-        axes[0].plot(t, df_exp["S1_OutputCurrent"], color="#2b5c8f", lw=1.2, label="Corriente Husillo S1")
+        axes[0].plot(
+            t,
+            df_exp["S1_OutputCurrent"],
+            color="#2b5c8f",
+            lw=1.2,
+            label="Corriente Husillo S1",
+        )
         axes[0].set_ylabel("S1 Current (A)")
         axes[0].set_title("Evolución Temporal de Carga del Husillo (S1 Output Current)")
         axes[0].grid(True, alpha=0.3)
         axes[0].legend(loc="upper right")
 
         # Aceleración del Eje Z
-        axes[1].plot(t, df_exp["Z1_ActualAcceleration"], color="#d95f02", lw=1.0, alpha=0.8, label="Aceleración Eje Z")
+        axes[1].plot(
+            t,
+            df_exp["Z1_ActualAcceleration"],
+            color="#d95f02",
+            lw=1.0,
+            alpha=0.8,
+            label="Aceleración Eje Z",
+        )
         axes[1].set_ylabel("Z Acceleration (mm/s²)")
         axes[1].set_xlabel("Tiempo transcurrido (s)")
         axes[1].set_title("Vibración Dinámica Axial en Eje Z")
@@ -192,7 +240,7 @@ def main():
         explainer = shap.TreeExplainer(modelo)
         shap_values_inst = explainer(X_input)
 
-        fig_shap, ax = plt.subplots(figsize=(10, 5))
+        fig_shap, _ax = plt.subplots(figsize=(10, 5))
         shap.plots.waterfall(shap_values_inst[0], max_display=10, show=False)
         st.pyplot(fig_shap)
         plt.close(fig_shap)

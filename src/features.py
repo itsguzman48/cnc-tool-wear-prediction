@@ -6,6 +6,7 @@ y manteniendo la trazabilidad del experimento para evitar data leakage.
 """
 
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
 from scipy.stats import iqr, skew
@@ -16,7 +17,9 @@ def calcular_rms(serie: pd.Series) -> float:
     return float(np.sqrt(np.mean(np.square(serie))))
 
 
-def extraer_features_segmento(segmento: pd.DataFrame, exp_id: int, feedrate: float, clamp: float, label: int) -> dict:
+def extraer_features_segmento(
+    segmento: pd.DataFrame, exp_id: int, feedrate: float, clamp: float, label: int
+) -> dict:
     """Calcula estadísticas temporales y dinámicas para una ventana o fase de corte."""
     feats = {
         "exp_id": exp_id,
@@ -54,9 +57,11 @@ def extraer_features_segmento(segmento: pd.DataFrame, exp_id: int, feedrate: flo
     return feats
 
 
-def construir_dataset_segmentado(data_dir: Path, window_size: int = 50, step_size: int = 25) -> pd.DataFrame:
+def construir_dataset_segmentado(
+    data_dir: Path, window_size: int = 50, step_size: int = 25
+) -> pd.DataFrame:
     """Procesa los 18 experimentos extrayendo ventanas solapadas durante las fases de corte.
-    
+
     Filtrar las fases de mecanizado activas ('Layer') descarta las operaciones en vacío
     (posicionamiento y retracción), centrando el aprendizaje en el esfuerzo de corte real.
     """
@@ -80,7 +85,9 @@ def construir_dataset_segmentado(data_dir: Path, window_size: int = 50, step_siz
 
         # Aislamiento de pasadas de corte
         if "Machining_Process" in df_exp.columns:
-            df_corte = df_exp[df_exp["Machining_Process"].str.startswith("Layer", na=False)]
+            df_corte = df_exp[
+                df_exp["Machining_Process"].str.startswith("Layer", na=False)
+            ]
         else:
             df_corte = df_exp
 
@@ -90,7 +97,9 @@ def construir_dataset_segmentado(data_dir: Path, window_size: int = 50, step_siz
         # Segmentación por ventanas deslizantes
         for start_idx in range(0, len(df_corte) - window_size + 1, step_size):
             ventana = df_corte.iloc[start_idx : start_idx + window_size]
-            features = extraer_features_segmento(ventana, exp_id, feedrate, clamp, label)
+            features = extraer_features_segmento(
+                ventana, exp_id, feedrate, clamp, label
+            )
             filas.append(features)
 
     df_dataset = pd.DataFrame(filas).fillna(0.0)
@@ -101,6 +110,8 @@ if __name__ == "__main__":
     base_dir = Path(__file__).resolve().parent.parent
     raw_dir = base_dir / "data" / "raw"
     df = construir_dataset_segmentado(raw_dir)
-    print(f"Dataset generado exitosamente: {df.shape[0]} muestras, {df.shape[1]} columnas.")
+    print(
+        f"Dataset generado exitosamente: {df.shape[0]} muestras, {df.shape[1]} columnas."
+    )
     print("Muestras por condición (target):")
     print(df["target"].value_counts())
