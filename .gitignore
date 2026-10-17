@@ -1,7 +1,8 @@
-# Datos y binarios pesados
-data/
+# Datos y binarios pesados (se ignoran datos brutos completos, se permite muestra y modelo para despliegue)
+data/raw/
+!data/sample/
 models/*.pkl
-*.pkl
+!models/cnc_tool_wear_xgb.pkl
 
 # Entornos virtuales
 .venv/

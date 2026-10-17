@@ -72,7 +72,8 @@ cnc-tool-wear-prediction/
 ├── app/
 │   └── main.py                     # Aplicación interactiva de Streamlit
 ├── data/
-│   └── raw/                        # 18 CSVs de experimentos + train.csv (ignorado en git)
+│   ├── sample/                     # Muestras reales para despliegue web y demos
+│   └── raw/                        # 18 CSVs de telemetría + train.csv (ignorado en git)
 ├── models/
 │   ├── cnc_tool_wear_xgb.pkl       # Modelo entrenado para producción
 │   └── feature_columns.json        # Esquema de variables esperadas
@@ -89,7 +90,12 @@ cnc-tool-wear-prediction/
 │   ├── eda.py                      # Extracción y graficado del EDA
 │   ├── features.py                 # Extracción de features por ventana
 │   ├── baseline.py                 # Validación cruzada baseline
-│   └── models.py                   # Entrenamiento y cálculo de SHAP
+│   ├── models.py                   # Entrenamiento y cálculo de SHAP
+│   └── verificar.py                # Validación global sobre los 18 experimentos
+├── tests/
+│   └── test_features.py            # Pruebas unitarias de ingeniería de características
+├── .github/workflows/
+│   └── ci.yml                      # Integración continua con pytest
 ├── .gitignore
 ├── AGENTS.md                       # Directivas y rigor técnico del proyecto
 ├── LICENSE                         # Licencia MIT
@@ -118,7 +124,10 @@ source .venv/bin/activate
 # 3. Instalar dependencias
 pip install -r requirements.txt
 
-# 4. Lanzar la aplicación interactiva de diagnóstico
+# 4. Comprobación global sobre los 18 experimentos de laboratorio
+python src/verificar.py
+
+# 5. Lanzar la aplicación interactiva de diagnóstico
 streamlit run app/main.py
 ```
 

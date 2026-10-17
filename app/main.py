@@ -15,6 +15,7 @@ if str(BASE_DIR) not in sys.path:
 
 import joblib
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import shap
 import streamlit as st
@@ -95,6 +96,7 @@ def main():
     )
 
     data_raw = BASE_DIR / "data" / "raw"
+    data_sample = BASE_DIR / "data" / "sample"
     df_exp = None
     feedrate = 6.0
     clamp = 4.0
@@ -110,7 +112,9 @@ def main():
             "Seleccionar serie temporal:", list(muestras.keys())
         )
         exp_id, feedrate, clamp, _expected_label = muestras[eleccion]
-        file_path = data_raw / f"experiment_{exp_id:02d}.csv"
+        file_path = data_sample / f"experiment_{exp_id:02d}.csv"
+        if not file_path.exists():
+            file_path = data_raw / f"experiment_{exp_id:02d}.csv"
         if file_path.exists():
             df_exp = pd.read_csv(file_path)
     else:
@@ -145,16 +149,32 @@ def main():
     if len(df_corte) == 0:
         df_corte = df_exp
 
-    # Extraer features de la fase de corte
-    feats_dict = extraer_features_segmento(
-        df_corte, exp_id=exp_id, feedrate=feedrate, clamp=clamp, label=0
-    )
-    X_input = pd.DataFrame([feats_dict])[feature_cols].fillna(0.0)
+    # Segmentación en ventanas de 50 muestras y consenso predictivo
+    window_size = 50
+    step_size = 50
+    probabilidades = []
+    ventanas_feats = []
 
-    # Inferencia
-    y_pred = modelo.predict(X_input)[0]
-    y_proba = modelo.predict_proba(X_input)[0]
-    prob_worn = y_proba[1]
+    for start_idx in range(0, len(df_corte) - window_size + 1, step_size):
+        ventana = df_corte.iloc[start_idx : start_idx + window_size]
+        wf = extraer_features_segmento(ventana, exp_id=exp_id, feedrate=feedrate, clamp=clamp, label=0)
+        ventanas_feats.append(wf)
+        X_win = pd.DataFrame([wf])[feature_cols].fillna(0.0)
+        probabilidades.append(float(modelo.predict_proba(X_win)[0][1]))
+
+    if probabilidades:
+        prob_worn = float(np.mean(probabilidades))
+        y_pred = 1 if prob_worn >= 0.50 else 0
+        feats_dict = pd.DataFrame(ventanas_feats).mean().to_dict()
+    else:
+        feats_dict = extraer_features_segmento(
+            df_corte, exp_id=exp_id, feedrate=feedrate, clamp=clamp, label=0
+        )
+        X_tmp = pd.DataFrame([feats_dict])[feature_cols].fillna(0.0)
+        y_pred = int(modelo.predict(X_tmp)[0])
+        prob_worn = float(modelo.predict_proba(X_tmp)[0][1])
+
+    X_input = pd.DataFrame([feats_dict])[feature_cols].fillna(0.0)
 
     # Panel de métricas principales
     col1, col2, col3, col4 = st.columns(4)
