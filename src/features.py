@@ -17,6 +17,20 @@ def calcular_rms(serie: pd.Series) -> float:
     return float(np.sqrt(np.mean(np.square(serie))))
 
 
+def validar_telemetria_csv(df: pd.DataFrame) -> tuple[bool, list[str]]:
+    """Comprueba que el conjunto de datos contenga las señales de sensores mínimas requeridas.
+
+    Retorna una tupla (es_valido, columnas_faltantes).
+    """
+    columnas_requeridas = [
+        "S1_OutputCurrent",
+        "Z1_CurrentFeedback",
+        "Z1_ActualAcceleration",
+    ]
+    faltantes = [c for c in columnas_requeridas if c not in df.columns]
+    return (len(faltantes) == 0, faltantes)
+
+
 def extraer_features_segmento(
     segmento: pd.DataFrame, exp_id: int, feedrate: float, clamp: float, label: int
 ) -> dict:

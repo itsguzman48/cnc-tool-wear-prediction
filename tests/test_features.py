@@ -7,7 +7,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.features import calcular_rms, extraer_features_segmento
+from src.features import (
+    calcular_rms,
+    extraer_features_segmento,
+    validar_telemetria_csv,
+)
 
 
 def test_calcular_rms_constante() -> None:
@@ -75,3 +79,28 @@ def test_esquema_columnas_modelo_coherente() -> None:
         assert len(cols) > 0
         assert "feedrate" in cols
         assert "clamp_pressure" in cols
+
+
+def test_validar_telemetria_csv_correcta() -> None:
+    """Verifica que un conjunto de datos con las señales críticas sea aceptado."""
+    df = pd.DataFrame(
+        {
+            "S1_OutputCurrent": [300.0, 305.0],
+            "Z1_CurrentFeedback": [0.5, 0.6],
+            "Z1_ActualAcceleration": [10.0, 12.0],
+            "Machining_Process": ["Layer 1 Up", "Layer 1 Up"],
+        }
+    )
+    valido, faltantes = validar_telemetria_csv(df)
+    assert valido is True
+    assert len(faltantes) == 0
+
+
+def test_validar_telemetria_csv_columnas_faltantes() -> None:
+    """Verifica que se detecten y reporten las columnas críticas ausentes."""
+    df = pd.DataFrame({"X1_ActualPosition": [1.0, 2.0]})
+    valido, faltantes = validar_telemetria_csv(df)
+    assert valido is False
+    assert "S1_OutputCurrent" in faltantes
+    assert "Z1_CurrentFeedback" in faltantes
+    assert "Z1_ActualAcceleration" in faltantes

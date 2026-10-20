@@ -20,7 +20,7 @@ import pandas as pd
 import shap
 import streamlit as st
 
-from src.features import extraer_features_segmento
+from src.features import extraer_features_segmento, validar_telemetria_csv
 
 # Configuración de página
 st.set_page_config(
@@ -137,6 +137,15 @@ def main():
     if df_exp is None:
         st.info(
             "Por favor, selecciona o sube un archivo CSV para iniciar el diagnóstico."
+        )
+        return
+
+    # Validación de esquema de sensores
+    es_valido, faltantes = validar_telemetria_csv(df_exp)
+    if not es_valido:
+        st.error(
+            f"El archivo cargado no contiene las siguientes señales de sensores requeridas: `{', '.join(faltantes)}`.\n\n"
+            "Asegúrate de proporcionar una telemetría válida con lecturas del husillo (S1) y eje vertical (Z1)."
         )
         return
 
