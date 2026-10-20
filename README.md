@@ -12,7 +12,7 @@
 
 <div align="center">
 
-### 🌐 Aplicación Web en Producción (Live Demo)
+###  Aplicación Web en Producción (Live Demo)
 [![Open in Streamlit](https://img.shields.io/badge/Probar%20en%20Vivo-cnctoolwearapp.streamlit.app-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://cnctoolwearapp.streamlit.app/)
 
 *Acceso directo sin instalación: incluye experimentos de referencia precargados y soporte para subir ficheros de telemetría en tiempo real.*
@@ -119,7 +119,7 @@ cnc-tool-wear-prediction/
 
 ### Opción A: Demostración en la Nube (24/7)
 Accede directamente a la aplicación interactiva desplegada en **Streamlit Community Cloud** sin necesidad de instalar nada:
-👉 **[https://cnctoolwearapp.streamlit.app/](https://cnctoolwearapp.streamlit.app/)**
+ **[https://cnctoolwearapp.streamlit.app/](https://cnctoolwearapp.streamlit.app/)**
 
 ---
 
