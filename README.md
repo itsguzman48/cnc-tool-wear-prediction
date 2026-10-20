@@ -121,6 +121,9 @@ cnc-tool-wear-prediction/
 Accede directamente a la aplicación interactiva desplegada en **Streamlit Community Cloud** sin necesidad de instalar nada:
  **[https://cnctoolwearapp.streamlit.app/](https://cnctoolwearapp.streamlit.app/)**
 
+> [!TIP]
+> Si la aplicación en [share.streamlit.io](https://share.streamlit.io/) muestra algún aviso de desconexión momentánea o reinicio pendiente, pulsa en el menú de los tres puntos de la app y selecciona **Reboot** para resincronizar el contenedor.
+
 ---
 
 ### Opción B: Ejecución Local en tu Entorno
@@ -160,6 +163,14 @@ Desarrollado por **Íñigo Guzmán** ([@itsguzman48](https://github.com/itsguzma
 
 ---
 
-## 8. Licencia
+## 8. Hoja de Ruta y Líneas Futuras de Trabajo
+
+- [ ] **Inferencia embebida de baja latencia con ONNX**: Exportación del modelo XGBoost a formato ONNX para despliegue directo en microcontroladores y ordenadores industriales (IPC) en pie de máquina (<5 ms por ciclo).
+- [ ] **Fusión sensorial acústica (Acoustic Emission)**: Incorporación de canales piezoeléctricos de alta frecuencia (>100 kHz) para detectar microfracturas en el carburo de tungsteno antes de la pérdida visible de filo.
+- [ ] **Detección de deriva de datos (Data Drift)**: Integración de pruebas estadísticas (KS-test o Evidently AI) para alertar si el cambio de material mecanizado (p. ej., aleaciones aeronáuticas frente a cera) invalida las hipótesis del modelo.
+
+---
+
+## 9. Licencia
 
 Este proyecto está bajo la [Licencia MIT](LICENSE).
