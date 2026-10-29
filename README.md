@@ -1,176 +1,144 @@
-# Predicción de Desgaste de Herramienta en Fresadora CNC (`cnc-tool-wear-prediction`)
+# Predicción de desgaste de herramienta en fresadora CNC
 
-[![Live Demo](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://cnctoolwearapp.streamlit.app/)
+[![Demo](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://cnctoolwearapp.streamlit.app/)
 [![CI](https://github.com/itsguzman48/cnc-tool-wear-prediction/actions/workflows/ci.yml/badge.svg)](https://github.com/itsguzman48/cnc-tool-wear-prediction/actions/workflows/ci.yml)
-[![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Framework: Streamlit](https://img.shields.io/badge/Streamlit-1.30+-red.svg)](https://streamlit.io/)
-[![XGBoost](https://img.shields.io/badge/Model-XGBoost-orange.svg)](https://xgboost.readthedocs.io/)
-[![XAI: SHAP](https://img.shields.io/badge/XAI-SHAP-purple.svg)](https://shap.readthedocs.io/)
 
-> **Sistema de mantenimiento predictivo industrial e Inteligencia Artificial Explicable (XAI) para la detección temprana de desgaste de fresa (*tool wear*) a partir de señales multivariables de servomotores y husillo.**
+> Clasificación de herramienta afilada (`unworn`) frente a desgastada (`worn`) a partir de la telemetría de servomotores y husillo de una fresadora CNC, con validación agrupada por experimento para evitar data leakage, interpretabilidad con SHAP y una demo en Streamlit.
 
-<div align="center">
+<p align="center">
+  <img src="assets/eval-terminal.svg" width="100%" alt="Terminal animado con los resultados de la validación agrupada por experimento">
+</p>
 
-###  Aplicación Web en Producción (Live Demo)
-[![Open in Streamlit](https://img.shields.io/badge/Probar%20en%20Vivo-cnctoolwearapp.streamlit.app-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://cnctoolwearapp.streamlit.app/)
+**Resultado principal, sin maquillaje:** con una evaluación honesta (ningún experimento aparece a la vez en train y test), ningún modelo supera a la línea base trivial. Este README explica por qué, qué demuestra eso y qué haría a continuación.
 
-*Acceso directo sin instalación: incluye experimentos de referencia precargados y soporte para subir ficheros de telemetría en tiempo real.*
-
-</div>
+**Demo:** [cnctoolwearapp.streamlit.app](https://cnctoolwearapp.streamlit.app/), con experimentos de ejemplo precargados y subida de CSV de telemetría.
 
 ---
 
-## 1. Contexto Industrial y Planteamiento del Problema
+## 1. Problema y datos
 
-En las operaciones de fresado de alta precisión (Industria 4.0), el desgaste de los filos de la herramienta provoca un deterioro exponencial en el acabado superficial de la pieza, imprecisiones dimensionales y roturas catastróficas que detienen líneas enteras de producción.
+En fresado, el desgaste del filo empeora el acabado y la precisión de la pieza y puede acabar en rotura de herramienta. La idea es detectarlo de forma no invasiva con las señales que la máquina ya registra.
 
-Este proyecto utiliza el benchmark del **SMART Lab de la Universidad de Michigan** (18 experimentos de fresado en bloques de cera con telemetría de 48 señales continuas registradas cada 100 ms) para predecir de forma no invasiva si una herramienta se encuentra afilada (**`unworn`**) o desgastada (**`worn`**).
+Dataset: benchmark del **SMART Lab de la Universidad de Michigan**. Son **18 experimentos** de fresado sobre bloques de cera, con 48 señales registradas cada 100 ms (posición, velocidad, aceleración, corriente, tensión y potencia de los ejes X, Y, Z y del husillo S1). Cada experimento tiene una única etiqueta: `worn` o `unworn`.
 
 ```mermaid
 flowchart TD
-    A["Telemetría de la Máquina CNC (100 ms)"] --> B["Filtrado de Pasadas de Corte Activo (Layer 1-3)"]
-    B --> C["Extracción Estadística (Media, RMS, Std, IQR, Picos)"]
-    C --> D["Partición Rigurosa con StratifiedGroupKFold (por exp_id)"]
-    D --> E["Modelos de Clasificación (Baseline vs. XGBoost)"]
-    E --> F["Auditoría e Interpretabilidad con SHAP (TreeExplainer)"]
-    F --> G["Dashboard Interactivo en Streamlit (app/main.py)"]
+    A["Telemetría CNC (100 ms)"] --> B["Filtrado de pasadas de corte (Layer 1-3)"]
+    B --> C["Ventanas de 50 muestras + features estadísticas"]
+    C --> D["StratifiedGroupKFold agrupado por experimento"]
+    D --> E["Baselines vs. XGBoost"]
+    E --> F["SHAP: qué ha aprendido el modelo"]
+    F --> G["Demo en Streamlit"]
 ```
 
 ---
 
-## 2. Rigor Técnico y Prevención de Data Leakage
+## 2. Evaluación sin data leakage
 
-Uno de los errores más comunes en proyectos de series temporales de mecanizado es aplicar un `train_test_split` aleatorio fila por fila. En una misma pasada de fresado, dos muestras contiguas (separadas por 100 ms) comparten vibración, velocidad y estado térmico: mezclarlas infla artificialmente las métricas (>98% de precisión aparente) pero el modelo fracasa en producción al recibir una pieza nueva.
+El error típico en este dataset es hacer un `train_test_split` aleatorio por filas o por ventanas. Dos ventanas contiguas del mismo experimento son casi idénticas, así que el modelo "reconoce el experimento" en lugar de reconocer el desgaste, y las métricas salen infladas (por encima del 95%).
 
-### Metodología Aplicada:
-1. **Aislamiento por Experimento (`StratifiedGroupKFold`):** La validación cruzada agrupa obligatoriamente por el identificador del experimento (`exp_id`). El modelo se evalúa siempre sobre experimentos y piezas completamente invisibles durante el entrenamiento.
-2. **Segmentación de Fases de Mecanizado:** Se aíslan las pasadas de corte activas (`Layer 1 Up`, `Layer 1 Down`, etc.), eliminando el ruido de posicionamiento en vacío (`Starting`, `Prep`, `Repositioning`).
-3. **Ingeniería de Características en el Dominio del Tiempo:** Extracción de valor cuadrático medio (**RMS**), desviación típica, rango intercuartílico (**IQR**) y picos de corriente sobre los motores de los ejes X, Y, Z y del husillo giratorio (S1).
+Lo que hago:
 
----
-
-## 3. Resultados y Comparativa de Modelos
-
-Evaluación honesta mediante **StratifiedGroupKFold (5 particiones)** sobre experimentos independientes:
-
-| Modelo | Accuracy Medio | F1-Score Medio | ROC-AUC | Observaciones |
-| :--- | :---: | :---: | :---: | :--- |
-| **Dummy (Clase Mayoritaria)** | 54.3% | 0.703 | 0.500 | Línea base trivial |
-| **Logistic Regression (Lineal)** | 43.7% | 0.482 | 0.365 | No captura relaciones no lineales |
-| **Random Forest Baseline** | 42.9% | 0.498 | 0.375 | Árboles sin regularizar |
-| **XGBoost Classifier (Optimizado)** | **Producción** | **Regularizado** | **Auditable** | Selección de señales y baja profundidad |
+1. **Validación agrupada por experimento** (`StratifiedGroupKFold`, 5 folds, agrupando por `exp_id`). El test siempre son experimentos que el modelo no ha visto.
+2. **Solo pasadas de corte activas** (`Layer 1 Up`, `Layer 1 Down`, …). Se descartan posicionamiento, preparación y movimientos en vacío.
+3. **Features por ventana** de 50 muestras (5 s): media, desviación típica, máximo, mínimo, RMS, IQR y asimetría de las corrientes de X, Y, Z y S1.
 
 ---
 
-## 4. Interpretabilidad Física con SHAP (XAI)
+## 3. Resultados
 
-Para que un modelo de Machine Learning sea aceptado en planta de fabricación, debe ser explicable. Mediante `shap.TreeExplainer` se auditaron las razones físicas de cada predicción:
+Validación cruzada agrupada por experimento (5 folds). Los valores son medias entre folds (± desviación típica cuando está calculada):
 
-![SHAP Summary Beeswarm](reports/figures/shap_summary_beeswarm.png)
+| Modelo | Accuracy | F1 (clase `worn`) | ROC-AUC |
+| :--- | :---: | :---: | :---: |
+| Dummy (clase mayoritaria) | 54,3% ± 3,9 | 0,703 ± 0,034 | 0,500 |
+| Regresión logística | 43,7% ± 12,9 | 0,482 ± 0,206 | 0,365 |
+| Random Forest (`max_depth=6`) | 42,9% ± 15,1 | 0,498 ± 0,213 | 0,375 |
+| XGBoost (`max_depth=4`, regularizado) | 31,4% ± 17,8 | 0,390 ± 0,225 | 0,254 |
 
-### Conclusiones de la Física de Mecanizado:
-- **Carga del Husillo (`S1_OutputCurrent` / `S1_OutputPower`):** Es la señal con mayor poder discriminativo. Al desgastarse el filo, la fuerza de corte tangencial requerida aumenta, elevando el consumo eléctrico del motor principal.
-- **Fuerza Axial en Eje Z (`Z1_ActualAcceleration` / `Z1_CurrentFeedback`):** Una herramienta roma pierde filo de penetración e incrementa el empuje vertical hacia la bancada, reflejándose en mayor amplitud de aceleración vertical.
+Fuente: [`reports/baseline_metrics.json`](reports/baseline_metrics.json) y [`reports/xgb_metrics.json`](reports/xgb_metrics.json).
+
+### Cómo se lee esto
+
+- **Ningún modelo generaliza a experimentos nuevos.** Todos quedan por debajo del Dummy, y los ROC-AUC están por debajo de 0,5.
+- **Un AUC sistemáticamente menor que 0,5 no es azar.** Indica que lo que el modelo aprende en train se invierte en test. Mi hipótesis principal es que con solo 18 experimentos el modelo aprende **condiciones de cada experimento** en lugar de desgaste. `feedrate` y `clamp_pressure` entran como features y son constantes dentro de cada experimento, así que funcionan casi como un identificador. Con tan pocos grupos, cada fold deja fuera experimentos cuya combinación de condiciones y etiqueta no se parece a la de train.
+- **Por eso el número interesante no es el accuracy, sino la diferencia entre evaluar mal y evaluar bien.** Con un split aleatorio este proyecto "tendría" más de un 95% de acierto. Con un split por experimento, el modelo no funciona. Detectar eso antes de llevar nada a planta es justo el objetivo de la validación agrupada.
+
+> **Nota sobre `src/verificar.py`:** clasifica los 18 experimentos con el modelo final, que se ha entrenado con esos mismos 18. Es una comprobación **in-sample**: sirve para verificar que el pipeline funciona de punta a punta, no para medir el rendimiento. El rendimiento real es la tabla de arriba.
 
 ---
 
-## 5. Estructura del Repositorio
+## 4. Interpretabilidad con SHAP
+
+![SHAP summary beeswarm](reports/figures/shap_summary_beeswarm.png)
+
+SHAP (`TreeExplainer`) muestra **en qué se apoya el modelo**. Las señales con más peso son la carga del husillo (`S1_OutputCurrent`, `S1_OutputPower`) y la corriente y aceleración del eje Z.
+
+Esto encaja con la física esperada: con un filo desgastado aumenta la fuerza de corte, y con ella el consumo del husillo y el empuje axial. Pero **no es una validación**. SHAP explica al modelo, no a la máquina, y un modelo que no generaliza puede apoyarse en señales "físicamente razonables" por motivos espurios. Lo uso como herramienta de diagnóstico, no como conclusión.
+
+---
+
+## 5. Qué haría a continuación
+
+Ordenado por lo que más información aporta:
+
+1. **Quitar `feedrate` y `clamp_pressure`** de las features y comprobar si el AUC vuelve a ~0,5 o lo supera. Es la forma directa de confirmar o descartar la hipótesis del apartado 3.
+2. **`LeaveOneGroupOut`** (18 folds de un experimento) en lugar de 5 folds. Con tan pocos grupos, 5 folds son muy inestables (fíjate en las desviaciones típicas).
+3. **Normalizar cada experimento respecto a su propio arranque**, por ejemplo con el cociente frente a las primeras pasadas. Así se mide el cambio dentro del experimento y no el nivel absoluto, que depende de las condiciones de corte.
+4. **Evaluar a nivel de experimento**, agregando las ventanas, que es la decisión que se tomaría en planta.
+5. **Más datos.** Con 18 experimentos sobre cera, cualquier conclusión es limitada. Aplicarlo a metal o aleaciones aeronáuticas requeriría datos de ese material.
+
+---
+
+## 6. Estructura del repositorio
 
 ```text
 cnc-tool-wear-prediction/
-├── app/
-│   └── main.py                     # Aplicación interactiva de Streamlit
+├── app/main.py                 # Demo en Streamlit (inferencia + SHAP por muestra)
 ├── data/
-│   ├── sample/                     # Muestras reales para despliegue web y demos
-│   └── raw/                        # 18 CSVs de telemetría + train.csv (ignorado en git)
+│   ├── sample/                 # 4 experimentos de ejemplo para la demo
+│   └── raw/                    # Dataset completo (no versionado, ver apartado 7)
 ├── models/
-│   ├── cnc_tool_wear_xgb.pkl       # Modelo entrenado para producción
-│   └── feature_columns.json        # Esquema de variables esperadas
-├── notebooks/
-│   ├── 01_eda_analisis_exploratorio.ipynb
-│   ├── 02_feature_engineering_y_baseline.ipynb
-│   └── 03_modelo_xgboost_e_interpretabilidad_shap.ipynb
-├── reports/
-│   ├── figures/                    # Gráficos generados de EDA y SHAP
-│   ├── baseline_metrics.json       # Resultados del baseline
-│   └── xgb_metrics.json            # Resultados de XGBoost
+│   ├── cnc_tool_wear_xgb.pkl   # Modelo XGBoost entrenado con los 18 experimentos
+│   └── feature_columns.json    # Esquema de features esperado
+├── notebooks/                  # 01 EDA · 02 features y baseline · 03 XGBoost y SHAP
+├── reports/                    # Métricas en JSON y figuras
 ├── src/
-│   ├── __init__.py
-│   ├── eda.py                      # Extracción y graficado del EDA
-│   ├── features.py                 # Extracción de features por ventana
-│   ├── baseline.py                 # Validación cruzada baseline
-│   ├── models.py                   # Entrenamiento y cálculo de SHAP
-│   └── verificar.py                # Validación global sobre los 18 experimentos
-├── tests/
-│   └── test_features.py            # Pruebas unitarias de ingeniería de características
-├── .github/workflows/
-│   └── ci.yml                      # Integración continua con pytest
-├── .gitignore
-├── AGENTS.md                       # Directivas y rigor técnico del proyecto
-├── LICENSE                         # Licencia MIT
-├── README.md                       # Documentación principal
-└── requirements.txt                # Dependencias del proyecto
+│   ├── features.py             # Filtrado de fases, ventanas y features
+│   ├── baseline.py             # Baselines con validación agrupada
+│   ├── models.py               # XGBoost con validación agrupada + SHAP
+│   ├── eda.py                  # Figuras de EDA
+│   └── verificar.py            # Comprobación in-sample del pipeline completo
+├── tests/test_features.py      # Tests de la ingeniería de features
+└── .github/workflows/ci.yml    # CI: ruff + pytest en Python 3.10 y 3.13
 ```
 
 ---
 
-## 6. Puesta en Marcha y Ejecución
+## 7. Ejecución local
 
-### Opción A: Demostración en la Nube (24/7)
-Accede directamente a la aplicación interactiva desplegada en **Streamlit Community Cloud** sin necesidad de instalar nada:
- **[https://cnctoolwearapp.streamlit.app/](https://cnctoolwearapp.streamlit.app/)**
-
-> [!TIP]
-> Si la aplicación en [share.streamlit.io](https://share.streamlit.io/) muestra algún aviso de desconexión momentánea o reinicio pendiente, pulsa en el menú de los tres puntos de la app y selecciona **Reboot** para resincronizar el contenedor.
-
----
-
-### Opción B: Ejecución Local en tu Entorno
-
-Requiere Python $\ge 3.10$.
+Requiere Python 3.10 o superior. El dataset completo no está en el repo: descárgalo de Kaggle ("CNC Mill Tool Wear", University of Michigan SMART Lab) y deja `train.csv` y los `experiment_XX.csv` en `data/raw/`.
 
 ```bash
-# 1. Clonar el repositorio
 git clone https://github.com/itsguzman48/cnc-tool-wear-prediction.git
 cd cnc-tool-wear-prediction
-
-# 2. Crear y activar entorno virtual
 python -m venv .venv
-# En Windows:
-.venv\Scripts\activate
-# En Linux/macOS:
-source .venv/bin/activate
-
-# 3. Instalar dependencias
+source .venv/bin/activate        # En Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# 4. Comprobación global sobre los 18 experimentos de laboratorio
-python src/verificar.py
-
-# 5. Lanzar la aplicación interactiva de diagnóstico
-streamlit run app/main.py
+python src/baseline.py           # Baselines con validación agrupada
+python src/models.py             # XGBoost + SHAP
+streamlit run app/main.py        # Demo
 ```
 
 ---
 
-## 7. Perfil de Ingeniería y Autoría
+## 8. Autor
 
-Desarrollado por **Íñigo Guzmán** ([@itsguzman48](https://github.com/itsguzman48)).
+**Íñigo Guzmán** · [GitHub](https://github.com/itsguzman48) · [LinkedIn](https://www.linkedin.com/in/iniguzman)
 
-- **Perfil:** Técnico Superior en Administración de Sistemas Informáticos en Red (ASIR), especializándome en Inteligencia Artificial y Big Data.
-- **Habilidades aplicadas:** Machine Learning industrial, ingeniería de características en series temporales, prevención rigurosa de fuga de datos (*data leakage* con GroupKFold), Inteligencia Artificial Explicable (XAI con SHAP) y desarrollo de aplicaciones de inferencia interactiva con Streamlit.
+Técnico Superior en ASIR, cursando la especialización en Inteligencia Artificial y Big Data.
 
----
-
-## 8. Hoja de Ruta y Líneas Futuras de Trabajo
-
-- [ ] **Inferencia embebida de baja latencia con ONNX**: Exportación del modelo XGBoost a formato ONNX para despliegue directo en microcontroladores y ordenadores industriales (IPC) en pie de máquina (<5 ms por ciclo).
-- [ ] **Fusión sensorial acústica (Acoustic Emission)**: Incorporación de canales piezoeléctricos de alta frecuencia (>100 kHz) para detectar microfracturas en el carburo de tungsteno antes de la pérdida visible de filo.
-- [ ] **Detección de deriva de datos (Data Drift)**: Integración de pruebas estadísticas (KS-test o Evidently AI) para alertar si el cambio de material mecanizado (p. ej., aleaciones aeronáuticas frente a cera) invalida las hipótesis del modelo.
-
----
-
-## 9. Licencia
-
-Este proyecto está bajo la [Licencia MIT](LICENSE).
+Licencia [MIT](LICENSE).
